@@ -1,0 +1,260 @@
+## notes and code to develop flexdashboard training
+## this script to act as source file for '2 advanced' Rmd 
+
+
+
+## libraries
+library(dplyr)
+library(tidyr)
+library(phsopendata)    # easily access open data from PHS
+library(ggplot2)
+library(lubridate)      # parse dates correctly
+library(scales)        #  create % sign in value box
+library(plotly)
+library(RcppRoll)     # for rolling sum function
+library(zoo)
+
+## one way to get data from the PHS opendata repository is by the resource id, found in the metadata section
+
+# daily positives by LA
+daily_la <- get_resource("427f9a25-db22-4014-a3bc-893b68243055",
+                         col_select = c("Date", "CA", "CAName", "DailyPositive")) %>% 
+  mutate(Year = as.numeric(substr(Date, 1, 4)))
+
+# LA populations
+la_pops <- get_resource("09ebfefb-33f4-4f6a-8312-2d14e2b02ace",
+                        col_select = c("Year", "CA", "Sex", "AllAges")) %>% 
+  filter(Year %in% c(2020, 2021),
+         Sex == "All") %>%  
+  # need to create 2022 pops. carry down from previous.
+  
+  complete(CA, Year = 2020:2022) %>% 
+  fill(AllAges)
+
+
+# Join population data to daily_la
+daily_la <- left_join(daily_la, la_pops, by = c("CA", "Year")) %>%
+  select(-c(Sex, Year)) %>% 
+  rename(Population = AllAges)
+
+# daily & cumulative totals
+daily_totals <- get_resource("287fc645-4352-4477-9c8c-55bc054b7e76")
+
+# vaccine data 
+vac_totals <- get_resource("42f17a3c-a4db-4965-ba68-3dffe6bca13a")
+
+# cumulative figures by deprivation
+dep_cases <- get_resource("307f6666-eb35-4587-b2d3-697eb69368be")
+dep_hosp <- get_resource("bef9fce8-62b7-4d34-b54d-4581bfbb64f9")
+
+# define my own colour palette
+mycols <- c("#00838F", "#FEED58", "#FEB200", "#FA8C00", "#F3511E", "#C52828")
+
+### end of first code chunk ----
+
+
+
+### row 1 ----
+
+## Value box
+
+cum_cases <- daily_totals %>% 
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>% 
+  
+  filter(Date == max(Date)) %>% 
+  pull(CumulativeCases)
+
+## Gauge
+
+vac_value <- vac_totals %>% 
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>% 
+  
+  filter(Date == max(Date),
+         Product == "Total",
+         Dose == "Dose 4",
+         AgeBand == "75+ years") %>% 
+  
+  pull(CumulativePercentCoverage) %>% 
+  round(., 1)
+
+
+
+
+## chart 1 - heat map of cases by LA
+
+heat_map_22 <- daily_la %>% 
+  
+  # change Date to proper Date format, replace NA with zero
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
+  
+  # create rows for date/LA combinations where no entries have been made
+  complete(Date, CAName) %>% 
+  
+  # group to LA for each date
+  group_by(CAName) %>%
+  mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
+  ungroup() %>% 
+  
+  group_by(Date, CAName) %>% 
+  
+  summarise(Positive7Day = sum(Positive7Day),
+            Population = sum(Population),
+            CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
+  mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>% 
+  
+  # filter for 2022 only
+  filter(Date >= ("2022-01-01")) %>% 
+  
+  # create plot
+  ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
+  geom_tile() +
+  
+  # apply a defined colourpalette instead of default
+  scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
+  
+  # reverse y-axis so in alphabetical order starting at the top
+  scale_y_discrete(limits = rev) +
+  
+  # change legend, axes, title etc.
+  labs(title = "Heat map of 2022 case rate per 100,000 for Covid-19",
+       x = "2022",
+       y = "Local Authority")  +
+  
+  theme(legend.position="bottom")+
+  guides(fill = guide_legend(label.position = "bottom"))
+
+
+
+
+heat_map_21 <- daily_la %>% 
+  
+  # change Date to proper Date format, replace NA with zero
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
+  
+  # create rows for date/LA combinations where no entries have been made
+  complete(Date, CAName) %>% 
+  
+  # group to LA for each date
+  group_by(CAName) %>%
+  mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
+  ungroup() %>% 
+  
+  group_by(Date, CAName) %>% 
+  
+  summarise(Positive7Day = sum(Positive7Day),
+            Population = sum(Population),
+            CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
+  mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>% 
+  
+  # filter for 2021 only
+  filter(Date >= ("2021-01-01") & Date < ("2022-01-01")) %>% 
+  
+  # create plot
+  ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
+  geom_tile() +
+  
+  # apply a defined colourpalette instead of default
+  scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
+  
+  # reverse y-axis so in alphabetical order starting at the top
+  scale_y_discrete(limits = rev) +
+  
+  # change legend, axes, title etc.
+  labs(title = "Heat map of 2021 case rate per 100,000 for Covid-19",
+       x = "2021",
+       y = "Local Authority")  +
+  
+  theme(legend.position="bottom")+
+  guides(fill = guide_legend(label.position = "bottom"))
+
+
+
+heat_map_20 <- daily_la %>% 
+  
+  # change Date to proper Date format, replace NA with zero
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
+  
+  
+  # create rows for date/LA combinations where no entries have been made
+  complete(Date, CAName) %>% 
+  
+  # group to LA for each date
+  group_by(CAName) %>%
+  mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
+  ungroup() %>% 
+  
+  group_by(Date, CAName) %>% 
+  
+  summarise(Positive7Day = sum(Positive7Day),
+            Population = sum(Population),
+            CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
+  mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>% 
+  
+  # filter for 2020 only
+  filter(Date < ("2021-01-01")) %>% 
+  
+  # create plot
+  ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
+  geom_tile() +
+  
+  # apply a defined colourpalette instead of default
+  scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
+  
+  # reverse y-axis so in alphabetical order starting at the top
+  scale_y_discrete(limits = rev) +
+  
+  # change legend, axes, title etc.
+  labs(title = "Heat map of 2020 case rate per 100,000 for Covid-19",
+       x = "2020",
+       y = "Local Authority")  +
+  
+  theme(legend.position="bottom")+
+  guides(fill = guide_legend(label.position = "bottom"))
+
+
+## chart 2 - Scotland daily positive
+
+scot_trend <- daily_totals %>% 
+  
+  # change Date to proper Date format
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d")),
+         
+         # daily trends look too jittery, smooth them by grouping to weekly.  ###### Not summing properly ######
+         week = floor_date(Date, "week")) %>%
+  
+  # need to aggregate all LAs to Scotland level, sum the daily positive and daily cumulative (just in case we want to use later)
+  group_by(week) %>% 
+  summarise(WeeklyPositive = sum(DailyCases)
+  ) %>% 
+  ungroup() %>% 
+  
+  # filter out last week as it may not include full 7 day totals
+  filter(week != max(week)) %>% 
+  
+  # create time series plot
+  ggplot(., aes(x = week, y = WeeklyPositive)) +
+  geom_line() +
+  
+  labs(title = "Weekly cases of Covid-19 across Scotland",
+       x = "Date",
+       y = "Number of cases each week")+
+  
+  theme_minimal()
+
+
+## Deprivation chart
+
+dep_cases <- dep_cases %>% 
+  left_join(., dep_hosp) %>% 
+  filter(SIMDQuintile %in% c("1", "2", "3", "4", "5"))
+
+
+dep_plot <- ggplot(dep_cases, aes(x = TotalCases, y = NumberAdmitted, colour = SIMDQuintile)) +
+  geom_point(size = 3) +
+  expand_limits(x = 0, y = 0) +
+  
+  labs(title = "Covid-19 cases and hospitalisations by deprivation quintile",
+       x = "Number testing positive for Covid-19",
+       y = "Hospitalisations")+
+  
+  theme_minimal()

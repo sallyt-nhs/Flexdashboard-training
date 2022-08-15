@@ -1,0 +1,129 @@
+---
+title: "My First Flexdashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    theme:
+       bootswatch: cyborg
+    logo: tsu_logo_yellow.png
+    orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+
+source("source code.R")
+
+```
+
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+### Intro
+You could use this space to add information about data sources, how to use the dashboard, assumption etc.
+
+
+*Make this text italic*  
+
+**Make this text bold**  
+
+Data source: 
+[PHS Open Data](https://www.opendata.nhs.scot/organization/health_protection)
+
+
+Contact: [Sally.Thompson37@nhs.net](mailto:sally.thompson37@nhs.net)\
+Last updated: `r format(Sys.time(), '%d %B %Y')`
+
+### Further Resources
+
+more flexdashboard links here <font size = "1">
+<https://bookdown.org/yihui/rmarkdown/dashboards.html>
+<https://pkgs.rstudio.com/flexdashboard/> 
+</font>
+
+Row
+-----------------------------------------------------------------------
+
+### Total Cases
+
+``` {r}
+
+valueBox(value = scales::comma(cum_cases), 
+         icon = "fa-virus", 
+         caption = "Total Covid-19 cases in Scotland", 
+         color = "#ec6555")
+
+```
+
+
+### Vaccination Status - 75 and over with 4 doses
+
+``` {r}
+
+gauge(vac_value, min = 0, max = 100, symbol = "%") 
+
+```
+
+Row {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### 2022 heatmap
+
+```{r}
+
+## use plotly to widen the chart area to whole width, and add some interactivity
+plotly::ggplotly(heat_map_22) %>%
+  layout(legend = list(
+      orientation = "h"
+    )
+  )
+
+```
+
+### 2021 heatmap
+
+```{r}
+
+## use plotly to widen the chart area to whole width, and add some interactivity
+plotly::ggplotly(heat_map_21) %>%
+  layout(legend = list(
+      orientation = "h"
+    )
+  )
+
+```
+
+### 2020 heatmap
+
+```{r}
+
+## use plotly to widen the chart area to whole width, and add some interactivity
+plotly::ggplotly(heat_map_20) %>%
+  layout(legend = list(
+      orientation = "h"
+    )
+  )
+
+```
+
+Row 
+-----------------------------------------------------------------------
+
+### Scotland trend
+
+```{r}
+
+ggplotly(scot_trend)
+
+```
+
+### Cases and hospitalisation by deprivation 
+
+``` {r}
+
+ggplotly(dep_plot)
+
+```
+
+
