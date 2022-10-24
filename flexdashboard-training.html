@@ -1391,8 +1391,8 @@ pre code {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -1400,16 +1400,9 @@ pre code {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -1556,7 +1549,8 @@ first knit you will be prompted for a filename. This saves both the Rmd
 file and output html file with the same name.</p>
 <p>Compare the html output with the script - the default orientation (in
 the YAML header) is by columns, see how the use of second level headings
-(——-) and level 3 headings (###) define the layout.</p>
+(note this uses dashes ——- rather than ## as seen in normal markdown
+code) and level 3 headings (###) define the layout.</p>
 <div id="change-the-default-layout" class="section level2">
 <h2>Change the default layout</h2>
 <p>What happens if you change the orientation in the YAML header to
@@ -1638,8 +1632,10 @@ Contact: (add your email address as a hyperlink)
 Last updated: (use inline code to display today&#39;s date)  
 
 ### Further Resources
-&lt;bookdown.org/yihui/rmarkdown/dashboards.html&gt;
-&lt;pkgs.rstudio.com/flexdashboard/&gt;
+
+more flexdashboard links here 
+&lt;https://bookdown.org/yihui/rmarkdown/dashboards.html&gt;
+&lt;https://pkgs.rstudio.com/flexdashboard/&gt; 
 </code></pre>
 </div>
 <div id="code-chunks" class="section level2">
@@ -1791,7 +1787,7 @@ the relevant section:</p>
   guides(fill = guide_legend(label.position = &quot;bottom&quot;))
 
 
-heat_map</code></pre>
+heat_map_22</code></pre>
 <p>What do you notice about this plot? The plot doesn’t resize when the
 page does. One way around this is to wrap it in a plotly plot - which
 also adds some interactivity when the user hovers over it. Add a
@@ -1881,6 +1877,11 @@ meaningful.</p></li>
 in the same directory as the Rmd file, then add this code to the output
 section of the YAML header:
 <code>logo: tsu_logo_yellow.png</code></p></li>
+<li><p>While you are altering the YAML code, change from the default
+theme to another from <a href="https:\bootswatch.com">Bootswatch</a>. At
+the same level of indentation as the logo, add the following code:
+<code>theme:</code> then on a new line, with a further indent, add
+<code>bootswatch: lux</code></p></li>
 <li><p>Apply <code>ggplotly()</code> to all the charts.</p></li>
 <li><p>The URLs for further resources are too long for the box width.
 Use html to reduce the font size. Use the HTML code tags

@@ -3,8 +3,8 @@ title: "My First Flexdashboard"
 output: 
   flexdashboard::flex_dashboard:
     theme:
-       bootswatch: cyborg
-    logo: tsu_logo_yellow.png
+       bootswatch: lux
+    logo: ../tsu_logo_yellow.png
     orientation: rows
     vertical_layout: scroll
 ---
