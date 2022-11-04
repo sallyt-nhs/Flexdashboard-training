@@ -56,3 +56,7 @@ vignettes/*.pdf
 
 complete/
 README.md
+
+pre-course-setup*
+images/
+*.pdf

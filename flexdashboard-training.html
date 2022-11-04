@@ -1522,22 +1522,37 @@ div.tocify {
 
 <h1 class="title toc-ignore">Flexdashboard Training</h1>
 <h4 class="author">Sally Thompson</h4>
-<h4 class="date">15-08-2022</h4>
+<h4 class="date">04-11-2022</h4>
 
 </div>
 
 
 <div id="getting-set-up" class="section level1">
 <h1>Getting Set Up</h1>
-<p>You should already have unzipped the project folder to a directory
-that you can access from the version of R that you are running. In R,
-open the project ‘flexdashboard training.Rproj’.</p>
+<p>You should already have cloned the project folder from Github to a
+directory that you can access. In R, open the project ’flexdashboard
+training.Rproj.</p>
 <p>Run the code below in the console to install the required packages,
-if not already installed. Flexdashboard creates the dashboard template,
-and plotly allows you to add some interactivity.</p>
-<pre class="r"><code>install.packages(c(&quot;flexdashboard&quot;, &quot;plotly&quot;))</code></pre>
+if not already installed.</p>
+<pre class="r"><code># If a package is installed, it will be loaded. If any 
+# are not, the missing package(s) will be installed from CRAN
+
+# First specify the packages of interest
+packages = c(&quot;flexdashboard&quot;, &quot;dplyr&quot;, &quot;tidyr&quot;, &quot;lubridate&quot;, &quot;zoo&quot;,
+             &quot;ggplot2&quot;, &quot;scales&quot;, &quot;RcppRoll&quot;, &quot;plotly&quot;)
+
+# Now installs if required
+package.check &lt;- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      }
+  }
+)</code></pre>
 <p>We will be building a basic dashboard using open data from PHS, so
-also install the (new) phsopendata package:</p>
+also install the phsopendata package. You may also need to install the
+<code>remotes</code> package:</p>
 <pre class="r"><code>remotes::install_github(&quot;Public-Health-Scotland/phsopendata&quot;, upgrade = &quot;never&quot;)</code></pre>
 </div>
 <div id="creating-a-new-flexdashboard" class="section level1">
@@ -1560,8 +1575,7 @@ headings, rename Columns to Rows and add in a descriptor for each row -
 this will help you navigate your script. It might look something like
 this:</p>
 <pre><code>Row top
------------------------------------------------
-</code></pre>
+-----------------------------------------------</code></pre>
 <p>Now use level 3 headings to create boxes, these will be filled with
 charts and values.</p>
 <p>In the top row, create two boxes.<br />
@@ -1604,8 +1618,7 @@ Row bottom
 
 ``` {r} 
 
-``
-</code></pre>
+``</code></pre>
 </div>
 <div id="adding-a-sidebar" class="section level2">
 <h2>Adding a sidebar</h2>
@@ -1635,8 +1648,7 @@ Last updated: (use inline code to display today&#39;s date)
 
 more flexdashboard links here 
 &lt;https://bookdown.org/yihui/rmarkdown/dashboards.html&gt;
-&lt;https://pkgs.rstudio.com/flexdashboard/&gt; 
-</code></pre>
+&lt;https://pkgs.rstudio.com/flexdashboard/&gt; </code></pre>
 </div>
 <div id="code-chunks" class="section level2">
 <h2>Code Chunks</h2>
