@@ -1,0 +1,62 @@
+---
+title: "Flexdashboard Training - pre-course setup"
+author: "Sally Thompson"
+format: 
+  html:
+    theme: cosmo
+    fontsize: 1em
+    linestretch: 1.5
+editor: visual
+execute: 
+  echo: true
+  eval: false
+---
+
+## Before the Course
+
+### R & RStudio
+
+Please check that your versions of R and RStudio are (reasonably) up to date.
+
+We will be using some packages that you may already have installed. Copy this code into the console to install any that may be missing.
+
+```{r}
+# If a package is installed, it will be loaded. If any 
+# are not, the missing package(s) will be installed from CRAN
+
+# First specify the packages of interest
+packages = c("flexdashboard", "dplyr", "tidyr", "lubridate", "zoo",
+             "ggplot2", "scales", "RcppRoll", "plotly")
+
+# Will install if required
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      }
+  }
+)
+```
+
+We will also be using a package that isn't on CRAN, so run the following code in the console (If you have completed the previous session on RMarkdown you can omit this step as you will already have it installed). You may need to also install the `remotes` package:
+
+`remotes::install_github("Public-Health-Scotland/phsopendata")`
+
+\newpage
+
+### Get the learning material
+
+All the files you need for the training are on Github, you should clone these to RStudio.
+
+1.  In Github, go to the [repository](https://github.com/sallyt-nhs/Flexdashboard-training) site. Find and click on the green 'Code' button, then copy the URL from the 'Clone' section of the dropdown.
+
+    ![](images/paste-4542BC7C.png)
+
+2.  Open RStudio and start a new project (File \> New project...) then select Version Control \> Git from the pop-up window. Paste the URL into the 'Repository URL' box, check the folder it will be saved in (and change if necessary), then click 'Create Project'.
+
+## On the Day
+
+This session works best if you have two monitors - one screen to display the training guide, and the main screen for working in RStudio.
+
+The training guide (flexdashboard-training.html) is in the main project folder. Open this in a browser window on your secondary screen and follow along.
