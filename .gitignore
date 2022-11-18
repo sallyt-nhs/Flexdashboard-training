@@ -54,9 +54,7 @@ vignettes/*.pdf
 *.[rR][dD][aA][tT][aA]
 *.[rR][dD][sS]
 
-# complete/
+training-guides/
 README.md
 
-pre-course-setup*
-images/
-*.pdf
+
