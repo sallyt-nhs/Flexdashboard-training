@@ -54,7 +54,11 @@ vignettes/*.pdf
 *.[rR][dD][aA][tT][aA]
 *.[rR][dD][sS]
 
+<<<<<<< HEAD
 training-guides/
+=======
+#training-guides/
+>>>>>>> b0c50a6e803ef97a3a2227b07a55500f76df26c4
 README.md
 
 
