@@ -4,7 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     theme:
        bootswatch: lux
-    logo: ../tsu_logo_yellow.png
+    logo: tsu_logo_yellow.png
     orientation: rows
     vertical_layout: scroll
 ---
@@ -73,11 +73,7 @@ Row {.tabset .tabset-fade}
 ```{r}
 
 ## use plotly to widen the chart area to whole width, and add some interactivity
-plotly::ggplotly(heat_map_22) %>%
-  layout(legend = list(
-      orientation = "h"
-    )
-  )
+plotly::ggplotly(heat_map_22) 
 
 ```
 
@@ -86,11 +82,7 @@ plotly::ggplotly(heat_map_22) %>%
 ```{r}
 
 ## use plotly to widen the chart area to whole width, and add some interactivity
-plotly::ggplotly(heat_map_21) %>%
-  layout(legend = list(
-      orientation = "h"
-    )
-  )
+plotly::ggplotly(heat_map_21) 
 
 ```
 
@@ -99,11 +91,7 @@ plotly::ggplotly(heat_map_21) %>%
 ```{r}
 
 ## use plotly to widen the chart area to whole width, and add some interactivity
-plotly::ggplotly(heat_map_20) %>%
-  layout(legend = list(
-      orientation = "h"
-    )
-  )
+plotly::ggplotly(heat_map_20) 
 
 ```
 

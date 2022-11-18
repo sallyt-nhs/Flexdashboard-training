@@ -1,0 +1,255 @@
+---
+title: "My First Flexdashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    theme:
+       bootswatch: lux
+    logo: tsu_logo_yellow.png
+    orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+
+```
+
+```{r data_input}
+
+## libraries
+library(dplyr)
+library(tidyr)
+library(phsopendata)    # easily access open data from PHS
+library(ggplot2)
+library(lubridate)      # parse dates correctly
+library(scales)        #  create % sign in value box
+library(plotly)
+library(RcppRoll)     # for rolling sum function
+library(zoo)
+
+## one way to get data from the PHS opendata repository is by the resource id, found in the metadata section
+
+# daily positives by LA
+daily_la <- get_resource("427f9a25-db22-4014-a3bc-893b68243055",
+                         col_select = c("Date", "CA", "CAName", "DailyPositive")) %>% 
+  mutate(Year = as.numeric(substr(Date, 1, 4)))
+
+# LA populations
+la_pops <- get_resource("09ebfefb-33f4-4f6a-8312-2d14e2b02ace",
+                        col_select = c("Year", "CA", "Sex", "AllAges")) %>% 
+  filter(Year %in% c(2020, 2021),
+         Sex == "All") %>%  
+# need to create 2022 pops. carry down from previous.
+ 
+  complete(CA, Year = 2020:2022) %>% 
+  fill(AllAges)
+
+
+# Join population data to daily_la
+daily_la <- left_join(daily_la, la_pops, by = c("CA", "Year")) %>%
+   select(-c(Sex, Year)) %>% 
+  rename(Population = AllAges)
+
+# daily & cumulative totals
+daily_totals <- get_resource("287fc645-4352-4477-9c8c-55bc054b7e76")
+
+# vaccine data 
+vac_totals <- get_resource("42f17a3c-a4db-4965-ba68-3dffe6bca13a")
+
+# cumulative figures by deprivation
+dep_cases <- get_resource("307f6666-eb35-4587-b2d3-697eb69368be")
+dep_hosp <- get_resource("bef9fce8-62b7-4d34-b54d-4581bfbb64f9")
+
+# define my own colour palette
+mycols <- c("#00838F", "#FEED58", "#FEB200", "#FA8C00", "#F3511E", "#C52828")
+
+
+## function to create heatmap by year
+heatmap_function <- function(year_pl) { 
+  plot <-
+    daily_la %>% 
+     # change Date to proper Date format
+    mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
+    
+    # create rows for date/LA combinations where no entries have been made
+    complete(Date, CAName) %>% 
+    
+    # group to LA for each date
+    group_by(CAName) %>%
+    mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
+    ungroup() %>% 
+    group_by(Date, CAName) %>% 
+    summarise(Positive7Day = sum(Positive7Day),
+              Population = sum(Population),
+              CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
+    mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>%
+    mutate(year = lubridate::year(Date)) %>% 
+    
+    # filter for current year
+    filter(year == year_pl) %>% 
+    # create plot
+    ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
+    geom_tile() +
+    
+     # apply a defined colour palette instead of default
+    scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
+    
+    # reverse y-axis so in alphabetical order starting at the top
+    scale_y_discrete(limits = rev) +
+    labs(title = paste0("Heat map of ", year_pl, " case rate per 100,000 for Covid-19"),
+         x = year_pl, 
+         y = "Local Authority")  +
+    theme(legend.position="bottom")+
+    guides(fill = guide_legend(label.position = "bottom"))
+  plot
+}
+
+heat_map_20 <- heatmap_function(2020)
+heat_map_21 <- heatmap_function(2021)
+heat_map_22 <- heatmap_function(2022)
+
+```
+
+
+## Introduction {.sidebar}
+
+You could use this space to add information about data sources, how to use the dashboard, assumptions etc.
+
+
+*Make this text italic *
+
+**Make this text bold **
+
+Data source: 
+[PHS Open Data](https://www.opendata.nhs.scot/organization/health_protection) 
+
+Contact: [Sally.Thompson37@nhs.net](mailto:sally.thompson37@nhs.net)\
+Last updated: `r format(Sys.time(), '%d %B %Y')` 
+
+
+### Further Resources
+
+more flexdashboard links here <font size = "1">
+<https://bookdown.org/yihui/rmarkdown/dashboards.html>
+<https://pkgs.rstudio.com/flexdashboard/> 
+</font>
+
+
+row top 
+-----------------------------------------------------------------------
+
+### Total Covid cases in Scotland
+
+```{r}
+cum_cases <- daily_totals %>% 
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>% 
+
+  filter(Date == max(Date)) %>% 
+  pull(CumulativeCases)
+  
+valueBox(value = prettyNum(cum_cases, big.mark = " "), 
+         icon = "fa-virus", 
+         caption = "Total Covid-19 cases in Scotland", 
+         color = "#ec6555")
+
+```
+
+### 75 and overs who have had 4 vaccines
+
+```{r}
+vac_value <- vac_totals %>% 
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>% 
+           
+  filter(Date == max(Date),
+         Product == "Total",
+         Dose == "Dose 4",
+         AgeBand == "75+ years") %>% 
+  
+  pull(CumulativePercentCoverage) %>% 
+  round(., 1)
+
+gauge(vac_value, min = 0, max = 100, symbol = "%") 
+```
+
+row mid {.tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### 2022
+
+```{r}
+
+ggplotly(heat_map_22)
+
+```
+
+### 2021
+
+```{r}
+
+ggplotly(heat_map_21)
+
+```
+
+### 2020
+
+```{r}
+
+ggplotly(heat_map_20)
+
+```
+
+## row bottom
+
+### Scotland trend
+
+```{r}
+
+scot_trend <- daily_la %>% 
+  
+  # change Date to proper Date format
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d")),
+         
+         # daily trends look too jittery, smooth them by grouping to weekly.  ###### Not summing properly ######
+         week = floor_date(Date, "week")) %>%
+  
+  # need to aggregate all LAs to Scotland level, sum the daily positive and daily cumulative (just in case we want to use later)
+  group_by(week) %>% 
+  summarise(WeeklyPositive = sum(DailyPositive)
+            ) %>% 
+  ungroup() %>% 
+  
+   # filter out last week as it may not include full 7 day totals
+  filter(week != max(week)) %>% 
+  
+  # create time series plot
+  ggplot(., aes(x = week, y = WeeklyPositive)) +
+  geom_line() +
+  
+  labs(title = "Weekly cases of Covid-19 across Scotland",
+       x = "Date",
+       y = "Number of cases each week")+
+  
+  theme_minimal()
+ 
+ggplotly(scot_trend)
+```
+
+### Cases and Hospitalisation by deprivation
+
+```{r}
+dep_cases <- dep_cases %>% 
+  left_join(., dep_hosp) %>% 
+  filter(SIMDQuintile %in% c("1", "2", "3", "4", "5"))
+
+dep_plot <- ggplot(dep_cases, aes(x = TotalCases, y = NumberAdmitted, colour = SIMDQuintile)) +
+  geom_point(size = 3) +
+  expand_limits(x = 0, y = 0) +
+  
+  labs(title = "Covid-19 cases and hospitalisations by deprivation quintile",
+       x = "Number testing positive for Covid-19",
+       y = "Hospitalisations")+
+  
+  theme_minimal()
+
+ggplotly(dep_plot)
+```

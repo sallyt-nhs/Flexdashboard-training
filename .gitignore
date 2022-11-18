@@ -54,7 +54,7 @@ vignettes/*.pdf
 *.[rR][dD][aA][tT][aA]
 *.[rR][dD][sS]
 
-complete/
+# complete/
 README.md
 
 pre-course-setup*

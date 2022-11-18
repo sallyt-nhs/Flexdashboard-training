@@ -82,134 +82,49 @@ vac_value <- vac_totals %>%
 
 ## chart 1 - heat map of cases by LA
 
-heat_map_22 <- daily_la %>% 
-  
-  # change Date to proper Date format, replace NA with zero
-  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
-  
-  # create rows for date/LA combinations where no entries have been made
-  complete(Date, CAName) %>% 
-  
-  # group to LA for each date
-  group_by(CAName) %>%
-  mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
-  ungroup() %>% 
-  
-  group_by(Date, CAName) %>% 
-  
-  summarise(Positive7Day = sum(Positive7Day),
-            Population = sum(Population),
-            CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
-  mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>% 
-  
-  # filter for 2022 only
-  filter(Date >= ("2022-01-01")) %>% 
-  
-  # create plot
-  ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
-  geom_tile() +
-  
-  # apply a defined colourpalette instead of default
-  scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
-  
-  # reverse y-axis so in alphabetical order starting at the top
-  scale_y_discrete(limits = rev) +
-  
-  # change legend, axes, title etc.
-  labs(title = "Heat map of 2022 case rate per 100,000 for Covid-19",
-       x = "2022",
-       y = "Local Authority")  +
-  
-  theme(legend.position="bottom")+
-  guides(fill = guide_legend(label.position = "bottom"))
+## function to create heatmap by year
+heatmap_function <- function(year_pl) { 
+  plot <-
+    daily_la %>% 
+    # change Date to proper Date format
+    mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
+    
+    # create rows for date/LA combinations where no entries have been made
+    complete(Date, CAName) %>% 
+    
+    # group to LA for each date
+    group_by(CAName) %>%
+    mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
+    ungroup() %>% 
+    group_by(Date, CAName) %>% 
+    summarise(Positive7Day = sum(Positive7Day),
+              Population = sum(Population),
+              CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
+    mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>%
+    mutate(year = lubridate::year(Date)) %>% 
+    
+    # filter for current year
+    filter(year == year_pl) %>% 
+    # create plot
+    ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
+    geom_tile() +
+    
+    # apply a defined colour palette instead of default
+    scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
+    
+    # reverse y-axis so in alphabetical order starting at the top
+    scale_y_discrete(limits = rev) +
+    labs(title = paste0("Heat map of ", year_pl, " case rate per 100,000 for Covid-19"),
+         x = year_pl, 
+         y = "Local Authority")  +
+    theme(legend.position="bottom")+
+    guides(fill = guide_legend(label.position = "bottom"))
+  plot
+}
 
-
-
-
-heat_map_21 <- daily_la %>% 
-  
-  # change Date to proper Date format, replace NA with zero
-  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
-  
-  # create rows for date/LA combinations where no entries have been made
-  complete(Date, CAName) %>% 
-  
-  # group to LA for each date
-  group_by(CAName) %>%
-  mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
-  ungroup() %>% 
-  
-  group_by(Date, CAName) %>% 
-  
-  summarise(Positive7Day = sum(Positive7Day),
-            Population = sum(Population),
-            CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
-  mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>% 
-  
-  # filter for 2021 only
-  filter(Date >= ("2021-01-01") & Date < ("2022-01-01")) %>% 
-  
-  # create plot
-  ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
-  geom_tile() +
-  
-  # apply a defined colourpalette instead of default
-  scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
-  
-  # reverse y-axis so in alphabetical order starting at the top
-  scale_y_discrete(limits = rev) +
-  
-  # change legend, axes, title etc.
-  labs(title = "Heat map of 2021 case rate per 100,000 for Covid-19",
-       x = "2021",
-       y = "Local Authority")  +
-  
-  theme(legend.position="bottom")+
-  guides(fill = guide_legend(label.position = "bottom"))
-
-
-
-heat_map_20 <- daily_la %>% 
-  
-  # change Date to proper Date format, replace NA with zero
-  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
-  
-  
-  # create rows for date/LA combinations where no entries have been made
-  complete(Date, CAName) %>% 
-  
-  # group to LA for each date
-  group_by(CAName) %>%
-  mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
-  ungroup() %>% 
-  
-  group_by(Date, CAName) %>% 
-  
-  summarise(Positive7Day = sum(Positive7Day),
-            Population = sum(Population),
-            CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
-  mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>% 
-  
-  # filter for 2020 only
-  filter(Date < ("2021-01-01")) %>% 
-  
-  # create plot
-  ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
-  geom_tile() +
-  
-  # apply a defined colourpalette instead of default
-  scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
-  
-  # reverse y-axis so in alphabetical order starting at the top
-  scale_y_discrete(limits = rev) +
-  
-  # change legend, axes, title etc.
-  labs(title = "Heat map of 2020 case rate per 100,000 for Covid-19",
-       x = "2020",
-       y = "Local Authority")  +
-  
-  theme(legend.position="bottom")+
-  guides(fill = guide_legend(label.position = "bottom"))
+heat_map_20 <- heatmap_function(2020)
+heat_map_21 <- heatmap_function(2021)
+heat_map_22 <- heatmap_function(2022)
 
 
 ## chart 2 - Scotland daily positive

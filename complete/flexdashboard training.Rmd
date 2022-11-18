@@ -1,0 +1,406 @@
+---
+title: "Flexdashboard Training"
+author: "Sally Thompson"
+date: "04-11-2022"
+output: 
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = FALSE)
+```
+
+# Getting Set Up
+
+You should already have cloned the project folder from Github to a directory that you can access. In R, open the project 'flexdashboard training.Rproj.
+
+Run the code below in the console to install the required packages, if not already installed.
+
+```{r install}
+
+# If a package is installed, it will be loaded. If any 
+# are not, the missing package(s) will be installed from CRAN
+
+# First specify the packages of interest
+packages = c("flexdashboard", "dplyr", "tidyr", "lubridate", "zoo",
+             "ggplot2", "scales", "RcppRoll", "plotly")
+
+# Now installs if required
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      }
+  }
+)
+
+```
+
+We will be building a basic dashboard using open data from PHS, so also install the phsopendata package if you don't already have this. You may also need to install the `remotes` package:
+
+```{r install_opendata}
+
+remotes::install_github("Public-Health-Scotland/phsopendata", upgrade = "never")
+
+```
+
+# Creating a new flexdashboard
+
+To load up a new template, got to File -\> New file -\> R markdown... -\> from template and select Flex dashboard.
+
+Change the title to "My first flex dashboard" and press Knit. On first knit you will be prompted for a filename. This saves both the Rmd file and output html file with the same name.
+
+Compare the html output with the script - the default orientation (in the YAML header) is by columns, see how the use of second level headings (note this uses dashes ------- rather than \## as seen in normal markdown code, either will work) and level 3 headings (\###) define the layout.
+
+## Change the default layout
+
+What happens if you change the orientation in the YAML header to rows? Apply this change and knit.
+
+We want to create three rows. Add in a third row using level 2 headings, rename Columns to Rows and add in a descriptor for each row - this will help you navigate your script. It might look something like this:
+
+    ## Row top
+
+Now use level 3 headings to create boxes, these will be filled with charts and values.
+
+In the top row, create two boxes.\
+Leave the middle row as a single box, and create two boxes in the bottom row.
+
+    ## Row top 
+
+    ### Box 1
+
+    `r ''```` {r} 
+
+    ```
+
+    ### Box 2
+
+    `r ''```` {r} 
+
+    ```
+
+    ## Row mid 
+
+
+    ### Box 3
+
+    `r ''```` {r} 
+
+    ```
+
+    ## Row bottom
+
+
+    ### Box 4
+
+    `r ''```` {r} 
+
+    ```
+
+    ### Box 5
+
+    `r ''```` {r} 
+
+    ``
+
+## Adding a sidebar
+
+It can be useful to add a sidebar - in more advanced dashboards these could contain selection boxes and sliders, but we will use it to add some extra information.
+
+Below the 'R setup' code chunk add a level 2 header and call it Info. We need it to be recognised as a sidebar, so also add `{.sidebar}` to this line.
+
+Paste the following into that section, and amend the code as required.
+
+    ### Introduction
+    You could use this space to add information about data sources, how to use the dashboard, assumptions etc.
+
+
+    Make this text italic  
+
+    Make this text bold  
+
+    Data source: 
+    [PHS Open Data](https://www.opendata.nhs.scot/organization/health_protection) 
+
+    Contact: (add your email address as a hyperlink)  
+    Last updated: (use inline code to display today's date)  
+
+    ### Further Resources
+
+    more flexdashboard links here 
+    <https://bookdown.org/yihui/rmarkdown/dashboards.html>
+    <https://pkgs.rstudio.com/flexdashboard/> 
+
+## Code Chunks
+
+We can use code chunks to wrangle and manipulate data.
+
+Create a new R code chunk above the sidebar, and label it data_input. Paste the code below into it.
+
+```{r}
+
+## libraries
+library(dplyr)
+library(tidyr)
+library(phsopendata)    # easily access open data from PHS
+library(ggplot2)
+library(lubridate)      # parse dates correctly
+library(scales)        #  create % sign in value box
+library(plotly)
+library(RcppRoll)     # for rolling sum function
+library(zoo)
+
+## one way to get data from the PHS opendata repository is by the resource id, found in the metadata section
+
+# daily positives by LA
+daily_la <- get_resource("427f9a25-db22-4014-a3bc-893b68243055",
+                         col_select = c("Date", "CA", "CAName", "DailyPositive")) %>% 
+  mutate(Year = as.numeric(substr(Date, 1, 4)))
+
+# LA populations
+la_pops <- get_resource("09ebfefb-33f4-4f6a-8312-2d14e2b02ace",
+                        col_select = c("Year", "CA", "Sex", "AllAges")) %>% 
+  filter(Year %in% c(2020, 2021),
+         Sex == "All") %>%  
+# need to create 2022 pops. carry down from previous.
+ 
+  complete(CA, Year = 2020:2022) %>% 
+  fill(AllAges)
+
+
+# Join population data to daily_la
+daily_la <- left_join(daily_la, la_pops, by = c("CA", "Year")) %>%
+   select(-c(Sex, Year)) %>% 
+  rename(Population = AllAges)
+
+# daily & cumulative totals
+daily_totals <- get_resource("287fc645-4352-4477-9c8c-55bc054b7e76")
+
+# vaccine data 
+vac_totals <- get_resource("42f17a3c-a4db-4965-ba68-3dffe6bca13a")
+
+# cumulative figures by deprivation
+dep_cases <- get_resource("307f6666-eb35-4587-b2d3-697eb69368be")
+dep_hosp <- get_resource("bef9fce8-62b7-4d34-b54d-4581bfbb64f9")
+
+# define my own colour palette
+mycols <- c("#00838F", "#FEED58", "#FEB200", "#FA8C00", "#F3511E", "#C52828")
+
+
+## add a function to create the heatmap charts by year
+heatmap_function <- function(year_pl) { 
+  plot <-
+    daily_la %>% 
+     # change Date to proper Date format
+    mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>%
+    
+    # create rows for date/LA combinations where no entries have been made
+    complete(Date, CAName) %>% 
+    
+    # group to LA for each date
+    group_by(CAName) %>%
+    mutate(Positive7Day = roll_sum(DailyPositive, 7, align = "right", fill = NA)) %>% 
+    ungroup() %>% 
+    group_by(Date, CAName) %>% 
+    summarise(Positive7Day = sum(Positive7Day),
+              Population = sum(Population),
+              CrudeRate7DayPositive = Positive7Day/Population * 100000) %>%
+    mutate(CrudeRate7DayPositive = replace_na(CrudeRate7DayPositive, 0)) %>%
+    mutate(year = lubridate::year(Date)) %>% 
+    
+    # filter for current year
+    filter(year == year_pl) %>% 
+    # create plot
+    ggplot(., aes(x = Date, y = CAName, fill = CrudeRate7DayPositive)) +
+    geom_tile() +
+    
+     # apply a defined colour palette instead of default
+    scale_fill_gradientn(colours = mycols, name  = "case rate per 100,000") +
+    
+    # reverse y-axis so in alphabetical order starting at the top
+    scale_y_discrete(limits = rev) +
+    labs(title = paste0("Heat map of ", year_pl, " case rate per 100,000 for Covid-19"),
+         x = year_pl, 
+         y = "Local Authority")  +
+    theme(legend.position="bottom")+
+    guides(fill = guide_legend(label.position = "bottom"))
+  plot
+}
+
+heat_map_20 <- heatmap_function(2020)
+heat_map_21 <- heatmap_function(2021)
+heat_map_22 <- heatmap_function(2022)
+```
+
+The specific wrangling and manipulation of data for each box will be done within each box's code chunk.
+
+### Components
+
+The top row will contain two components: a value box showing the total number of cases to date, and a gauge indicating the percentage of people aged 75 and over who have had 4 doses of Covid-19 vaccine. You can add icons and use colour to make these stand out further.
+
+#### Value Box
+
+Some wrangling of the cumulative cases dataset is needed, to pull out the most recent value only. A single line of code puts this into a valuebox. Challenge: can you find a suitable icon that actually displays?
+
+```{r}
+
+cum_cases <- daily_totals %>% 
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>% 
+
+  filter(Date == max(Date)) %>% 
+  pull(CumulativeCases)
+  
+valueBox(value = prettyNum(cum_cases, big.mark = " "), 
+         icon = "fa-virus", 
+         caption = "Total Covid-19 cases in Scotland", 
+         color = "#ec6555")
+
+```
+
+#### Gauge
+
+A similar case for the gauge:\
+You can optionally set sector levels to change the gauge colour.
+
+```{r}
+
+vac_value <- vac_totals %>% 
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d"))) %>% 
+           
+  filter(Date == max(Date),
+         Product == "Total",
+         Dose == "Dose 4",
+         AgeBand == "75+ years") %>% 
+  
+  pull(CumulativePercentCoverage) %>% 
+  round(., 1)
+
+gauge(vac_value, min = 0, max = 100, symbol = "%") 
+
+```
+
+### Charts
+
+Build your charts as you would for any other form of output - all that flexdashboard is doing is providing a framework to place them in. You can add ggplots, but adding html widgets will increase the interactivity for users/readers. We will see this in action by changing one of our ggplots to plotly.
+
+#### Heatmap
+
+The first chart (second row) will be a heatmap of the 7-day case rate for each local authority area, during 2022. Add the following code to the relevant section:
+
+```{r}
+
+heat_map_22
+
+```
+
+What do you notice about this plot? The plot doesn't resize when the page does. One way around this is to wrap it in a plotly plot - which also adds some interactivity when the user hovers over it. Add a `ggplotly()` function to `heat_map_22`. You'll see this creates other problems, but let's move on for now.
+
+#### Trend Chart
+
+The first chart in the bottom row will show the weekly number of cases across Scotland.
+
+```{r}
+## chart 2 - Scotland weekly positive
+
+scot_trend <- daily_la %>% 
+  
+  # change Date to proper Date format
+  mutate(Date = as_date(as.character(Date, "%Y-%m-%d")),
+         
+         # daily trends look too jittery, smooth them by grouping to weekly.  ###### Not summing properly ######
+         week = floor_date(Date, "week")) %>%
+  
+  # need to aggregate all LAs to Scotland level, sum the daily positive and daily cumulative (just in case we want to use later)
+  group_by(week) %>% 
+  summarise(WeeklyPositive = sum(DailyCases)
+            ) %>% 
+  ungroup() %>% 
+  
+   # filter out last week as it may not include full 7 day totals
+  filter(week != max(week)) %>% 
+  
+  # create time series plot
+  ggplot(., aes(x = week, y = WeeklyPositive)) +
+  geom_line() +
+  
+  labs(title = "Weekly cases of Covid-19 across Scotland",
+       x = "Date",
+       y = "Number of cases each week")+
+  
+  theme_minimal()
+ 
+scot_trend
+
+```
+
+#### Deprivation
+
+Our final chart compares total number of cases with hospitalisations, for each of the SIMD deprivation quintiles.
+
+```{r}
+
+dep_cases <- dep_cases %>% 
+  left_join(., dep_hosp) %>% 
+  filter(SIMDQuintile %in% c("1", "2", "3", "4", "5"))
+
+dep_plot <- ggplot(dep_cases, aes(x = TotalCases, y = NumberAdmitted, colour = SIMDQuintile)) +
+  geom_point(size = 3) +
+  expand_limits(x = 0, y = 0) +
+  
+  labs(title = "Covid-19 cases and hospitalisations by deprivation quintile",
+       x = "Number testing positive for Covid-19",
+       y = "Hospitalisations")+
+  
+  theme_minimal()
+
+dep_plot
+
+```
+
+### Tabsets
+
+You can add tabsets to a row/column - this is useful if you want to e.g. have mutliple charts for comparison or provide the data behind a specific chart. We will add a tabset to the middle row, and add in a heatmap for 2021 and 2020.
+
+Find the top of the middle row section. add `{.tabset .tabset-fade}`. Copy the level 3 heading and chart code, and paste it below itself. Rename the three blocks (e.g. 2022, 2021 and 2020), and amend the code for the additional charts so they filter for the relevant year.
+
+## Tidying Up
+
+-   If you resize the page to make it smaller in height, what happens to the heatmap? In the YAML header the vertical layout is set to *fill*, so everything will resize accordingly, and be difficult to read. We can avoid this by changing it to *scroll*.
+
+-   Rename the boxes from e.g. *Chart A* to something more meaningful.
+
+-   Add in a logo to the top of the page. Make sure the logo image is in the same directory as the Rmd file, then add this code to the output section of the YAML header: `logo: tsu_logo_yellow.png`
+
+-   While you are altering the YAML code, change from the default theme to another from [Bootswatch](https:\bootswatch.com). At the same level of indentation as the logo, add the following code: `theme:` then on a new line, with a further indent, add `bootswatch: lux`
+
+-   Apply `ggplotly()` to all the charts.
+
+-   The URLs for further resources are too long for the box width. Use html to reduce the font size. Use the HTML code tags `<font size = "1"> your text </font>` to change font size.
+
+# What next?
+
+This is a very brief introduction to building a flexdashboard, and there is much that can be improved! Below are a few ideas for improving this dashboard, and also for moving on to more advanced cases.
+
+-   Explore changing the width (when in column orientation) or height (in rows orientation) of specific columns/rows.
+
+-   By now you'll see that the Rmd script is very busy, and it can be difficult distinguishing code from content. It is good practice to keep all the code that wrangles, processes and creates content in another script, that then gets called by the Rmd file as it knits. Look at the script of *2 advanced.Rmd* - can you see where all the hard work is done?
+
+-   Applying ggplotly to a ggplot loses some aspects of the plot, such as legend, layout, and aspects of themes. See if you can improve/correct this.
+
+-   Investigate building plots from scratch using plotly.
+
+-   You can add in additional pages, using a level 1 header ======== or \#
+
+-   Look at applying other HTML widgets, such as Sankey diagrams.
+
+-   One positive of flexdashboard is that it is a standalone file and does not need to be hosted on a server. But this means you can't use many aspects of Shiny (although you can use flexdashboard within a Shiny deployment). The crosstalk package allows you to build in filters and selection boxes, which creates a more interactive experience. The underlying data must be present though, as it can't compute 'on-the-fly'.
+
+-   Use CSS to personalise the overall look.
+
+-   What else? Experiment and share!
